@@ -2,11 +2,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from langchain_ollama import ChatOllama
-from langchain_community.utilities import GoogleSerperAPIWrapper
-from langchain.agents import create_agent
-from langgraph.checkpoint.memory import MemorySaver
 from langchain_community.tools import GoogleSerperRun
+
+
+
+from langchain_ollama import ChatOllama
+from langchain.agents import create_agent
+# from langgraph.checkpoint.memory import MemorySaver
+# from langchain_community.utilities import GoogleSerperAPIWrapper 
+
 
 llm = ChatOllama(model = "llama3.2")
 search = GoogleSerperRun()
