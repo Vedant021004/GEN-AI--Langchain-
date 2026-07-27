@@ -8,7 +8,7 @@ from langchain_community.tools import GoogleSerperRun
 
 from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
-# from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver
 # from langchain_community.utilities import GoogleSerperAPIWrapper 
 
 
@@ -21,7 +21,16 @@ search = GoogleSerperRun()
 agent = create_agent(
     model = llm,
     tools = [search],
-    system_prompt="You are a agent and can search for any question on google."
+    system_prompt = """
+    You are a helpful AI assistant.
+
+    Rules:
+    - Answer in 1-3 sentences.
+    - Be concise.
+    - Do not add unnecessary explanations.
+    - If the user asks for a simple answer, give only the direct answer.
+    """,
+    checkpointer = MemorySaver()
 )
 
 while True:
@@ -29,8 +38,9 @@ while True:
     if question.lower() in "done":
         break
     response = agent.invoke(
-            {"messages":[{"role":"user", "content":question}]},
-            
-        )
+                {"messages":[{"role":"user", "content":question}]}, 
+                {"configurable": {"thread_id": "1"}}, 
 
-    print(response["messages"][-1].content)
+    )
+
+    print("AI:",  response["messages"][-1].content)
