@@ -1,50 +1,50 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings,ChatOllama
+from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
 
+# LLM
 llm = ChatOllama(
-    model = "llama3.2"
+    model="llama3.2"
 )
 
+# Load PDF
+loader = PyPDFLoader("Vedant_Kapil_Resume.pdf")
+docs = loader.load()
 
-# DATA LOADING
-
-Loader = PyPDFLoader("Vedant_Kapil_Resume.pdf")
-docs = Loader.load()
-
-# SPILITING THE TEXT
-
-split = RecursiveCharacterTextSplitter(
+# Split
+splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,
     chunk_overlap=100
 )
-chunks = split.split_documents(docs)
 
-# VECTOR EMBEDDING
+# Chunks
+chunks = splitter.split_documents(docs)
 
+# Embeddings
 embeddings = OllamaEmbeddings(
     model="nomic-embed-text"
 )
 
-
-# STORE THE DATA INTO VECTOR DATABSE
-
+# Vector Database
 vectorstore = Chroma.from_documents(
     documents=chunks,
     embedding=embeddings,
     persist_directory="./chroma_db"
 )
 
-
 while True:
 
-    question = llm.invoke("Ask: ")
+    question = input("Ask: ")
 
-        if question.lower() in ["bye"]:
-        print("thank you")
+    if question.lower() == "bye":
+        print("Thank you")
         break
 
-result = vectorstore.similarity_search(query = question,k=2)
+    results = vectorstore.similarity_search(
+        question,
+        k=2
+    )
 
-print(result.page_content)
+    for doc in results:
+        print(doc.page_content)

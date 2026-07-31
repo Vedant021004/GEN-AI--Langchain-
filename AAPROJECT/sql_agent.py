@@ -1,34 +1,35 @@
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
 from langchain_community.utilities import SQLDatabase
+from langchain_ollama import ChatOllama
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents import create_agent
 
-load_dotenv()
+db = SQLDatabase.from_uri(
+    "mysql+pymysql://root:ved%40nt@127.0.0.1:3306/analyzer_ai"
+)
 
-# Database
-db = SQLDatabase.from_uri("sqlite:///my_tasks.db")
+print(db.get_usable_table_names())
 
-db.run("""
-CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    status TEXT CHECK(status IN ('pending','in_progress','completed')) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+db.run(
+    """CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary INT
 );
-""")
+"""
+)
 
-# LLM
-model = ChatOllama(
-    model="llama3.2"
+
+#LLM
+llm = ChatOllama(
+    model="qwen3:latest"
 )
 
 # SQL Toolkit
 toolkit = SQLDatabaseToolkit(
     db=db,
-    llm=model
+    llm=llm
 )
 
 tools = toolkit.get_tools()
@@ -36,30 +37,32 @@ tools = toolkit.get_tools()
 # Memory
 memory = InMemorySaver()
 
-# System Prompt
 system_prompt = """
-You are a Task Management Assistant that interacts with a SQLite database.
+You are an Employee Management Assistant that interacts with a SQLite database.
 
-The database contains a table named 'tasks'.
+The database contains a table named 'employees'.
 
 Columns:
 - id
-- title
-- description
-- status (pending, in_progress, completed)
-- created_at
+- name
+- department
+- salary
 
 Rules:
 - Use SQL tools whenever database access is required.
-- Limit SELECT queries to 10 rows.
-- Order results by created_at DESC.
-- After INSERT, UPDATE, or DELETE, verify the result with a SELECT query.
-- Never make up task data.
+- Limit SELECT queries to 10 rows unless the user requests otherwise.
+- Order employee records by id ASC unless a different order is requested.
+- After every INSERT, UPDATE, or DELETE operation, verify the changes with a SELECT query.
+- Never make up employee information.
+- If the requested employee does not exist, clearly inform the user.
+- Use only the available columns in the 'employees' table.
+- Generate safe and valid SQLite SQL queries.
 """
+
 
 # Agent
 agent = create_agent(
-    model=model,
+    model=llm,
     tools=tools,
     system_prompt=system_prompt,
     checkpointer=memory
@@ -75,6 +78,8 @@ thread_id = "rahul"
 thread_id = "priya"
 thread_id = "amit"
 
+
+thread_id = input("Enter your User ID: ")
 
 while True:
 
