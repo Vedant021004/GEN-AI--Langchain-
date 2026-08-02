@@ -67,7 +67,7 @@ def create_pdf_agent():
 
     return create_agent(
         model=llm,
-        tools=[retrieve_context],
+        tools=[retrieve_context_tool],  # use the registered tool
         system_prompt="""
 You are a PDF Assistant.
 Always use the retrieve_context tool to answer questions about the uploaded PDF.
@@ -78,6 +78,7 @@ If the retrieved context does not contain the answer, reply exactly:
 """,
         checkpointer=memory
     )
+
 
 
 # -------------------------------
