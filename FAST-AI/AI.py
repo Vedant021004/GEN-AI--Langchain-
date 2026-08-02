@@ -21,7 +21,7 @@ if "history" not in st.session_state:
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
-    api_key=groq_key
+    
 )
 
 # ---------------- Tools ---------------- #
