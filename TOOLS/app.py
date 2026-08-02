@@ -31,17 +31,27 @@ if "agent" not in st.session_state:
 # -------------------------------
 # Tool
 # -------------------------------
-@tool
-def retrieve_context(question: str) -> str:
-    vector_db = st.session_state.get("vector_db")
-    if vector_db is None:
-        return "⚠️ No PDF uploaded yet."
+from langchain_core.tools import StructuredTool
 
-    docs = vector_db.similarity_search(question, k=5)
+def retrieve_context(question: str) -> str:
+    """
+    Retrieve relevant information from the uploaded PDF.
+    Returns top-3 chunks of text.
+    """
+    vector_db = st.session_state.get("vector_db")
+
+    if vector_db is None:
+        return "No PDF has been uploaded."
+
+    docs = vector_db.similarity_search(question, k=3)
     if not docs:
-        return f"❌ No match found in the PDF for: {question}"
+        return "No relevant information found."
 
     return "\n\n".join(doc.page_content for doc in docs)
+
+# Register as a tool
+retrieve_context_tool = StructuredTool.from_function(retrieve_context)
+
 
 
 
