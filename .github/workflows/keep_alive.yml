@@ -11,4 +11,5 @@ jobs:
 
     steps:
       - name: Ping Streamlit
-        run: curl -L https://genniacqcxj6xbjrk9niak.streamlit.app/
+        run: |
+          curl --head --silent --show-error https://genniacqcxj6xbjrk9niak.streamlit.app/
