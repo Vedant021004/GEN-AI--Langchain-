@@ -1,16 +1,19 @@
 from dotenv import load_dotenv
 import streamlit as st
 
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_community.tools import GoogleSerperRun
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
+import os
 
 # ---------------- Load Environment ---------------- #
 
 load_dotenv()
 
 # ---------------- Session State ---------------- #
+
+groq_key = os.getenv("GROQ_API_KEY")
 
 if "memory" not in st.session_state:
     st.session_state.memory = MemorySaver()
@@ -20,8 +23,9 @@ if "history" not in st.session_state:
 
 # ---------------- LLM ---------------- #
 
-llm = ChatOllama(
-    model="qwen3:4b"      # Use the exact model name from `ollama list`
+llm = ChatGroq(
+    model="openai/gpt-oss-20b",
+    api_key=groq_key
 )
 
 # ---------------- Tools ---------------- #
