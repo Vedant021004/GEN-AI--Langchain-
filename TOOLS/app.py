@@ -7,7 +7,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.agents import create_agent
-from langchain_core.tools import StructuredTool
+from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 
@@ -37,11 +37,12 @@ if "last_retrieval_debug" not in st.session_state:
 # Hybrid Retrieval Tool
 # (keyword match + semantic search, deduped)
 # -------------------------------
+@tool
 def retrieve_context(question: str) -> str:
-    """
-    Retrieve relevant information from the uploaded PDF.
+    """Retrieve relevant information from the uploaded PDF.
     Combines exact keyword matching (good for names, numbers, IDs)
     with semantic vector search (good for conceptual questions).
+    Always call this tool before answering any question about the PDF.
     """
     vector_db = st.session_state.get("vector_db")
     raw_chunks = st.session_state.get("raw_chunks", [])
@@ -87,17 +88,6 @@ def retrieve_context(question: str) -> str:
     return "\n\n".join(deduped[:8])
 
 
-retrieve_context_tool = StructuredTool.from_function(
-    retrieve_context,
-    name="retrieve_context",
-    description=(
-        "Retrieve relevant information from the uploaded PDF using both "
-        "exact keyword matching and semantic search. Always call this "
-        "before answering any question about the PDF's content."
-    ),
-)
-
-
 # -------------------------------
 # Agent Creation
 # -------------------------------
@@ -111,7 +101,7 @@ def create_pdf_agent():
 
     return create_agent(
         model=llm,
-        tools=[retrieve_context_tool],
+        tools=[retrieve_context],
         system_prompt="""You are a PDF Assistant.
 
 You MUST call the retrieve_context tool for every question about the
