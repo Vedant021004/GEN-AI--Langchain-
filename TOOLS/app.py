@@ -17,19 +17,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
-
+# -------------------------------
+# Session State Initialization
+# -------------------------------
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
+    st.session_state["chat_history"] = []
 if "vector_db" not in st.session_state:
     st.session_state["vector_db"] = None
-
 if "agent" not in st.session_state:
     st.session_state["agent"] = None
-
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
-
 
 
 # -------------------------------
@@ -37,21 +33,16 @@ if "messages" not in st.session_state:
 # -------------------------------
 @tool
 def retrieve_context(question: str) -> str:
-    """
-    Retrieve relevant information from the uploaded PDF.
-    Returns top-3 chunks of text.
-    """
     vector_db = st.session_state.get("vector_db")
-
     if vector_db is None:
-        return "No PDF has been uploaded."
+        return "⚠️ No PDF uploaded yet."
 
-    docs = vector_db.similarity_search(question, k=3)
+    docs = vector_db.similarity_search(question, k=5)
     if not docs:
-        return "No relevant information found."
+        return f"❌ No match found in the PDF for: {question}"
 
-    context = "\n\n".join(doc.page_content for doc in docs)
-    return context
+    return "\n\n".join(doc.page_content for doc in docs)
+
 
 
 # -------------------------------
@@ -103,19 +94,17 @@ def process_pdf(uploaded_file):
 # -------------------------------
 # Upload PDF
 # -------------------------------
-
 uploaded_file = st.file_uploader("Upload PDF", type="pdf")
 
-if uploaded_file is not None and st.session_state.agent is None:
-
+if uploaded_file is not None and st.session_state["agent"] is None:
     # Reset old PDF data
-    st.session_state.vector_db = None
-    st.session_state.agent = None
-    st.session_state.chat_history = []
+    st.session_state["vector_db"] = None
+    st.session_state["agent"] = None
+    st.session_state["chat_history"] = []
 
     # Process new PDF
-    st.session_state.vector_db = process_pdf(uploaded_file)
-    st.session_state.agent = create_pdf_agent()
+    st.session_state["vector_db"] = process_pdf(uploaded_file)
+    st.session_state["agent"] = create_pdf_agent()
 
     st.success("✅ PDF Uploaded Successfully")
 
@@ -123,23 +112,22 @@ if uploaded_file is not None and st.session_state.agent is None:
 # -------------------------------
 # Chat Interface
 # -------------------------------
-# -------------------------------
-# Chat Interface
-# -------------------------------
 if st.session_state.get("agent") is not None:
 
-    for message in st.session_state.chat_history:
+    # Display previous chat history
+    for message in st.session_state["chat_history"]:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
+    # New question
     question = st.chat_input("Ask anything...")
     if question:
-        st.session_state.chat_history.append({"role": "user", "content": question})
+        st.session_state["chat_history"].append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.write(question)
 
         try:
-            response = st.session_state.agent.invoke(
+            response = st.session_state["agent"].invoke(
                 {"messages": [{"role": "user", "content": question}]},
                 config={"configurable": {"thread_id": "1"}}
             )
@@ -147,7 +135,7 @@ if st.session_state.get("agent") is not None:
         except Exception as e:
             answer = f"⚠️ Error: {str(e)}"
 
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+        st.session_state["chat_history"].append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
             st.write(answer)
 
@@ -155,5 +143,5 @@ if st.session_state.get("agent") is not None:
 # Clear Chat
 # -------------------------------
 if st.button("🗑️ Clear Chat"):
-    st.session_state.chat_history = []
+    st.session_state["chat_history"] = []
     st.success("Chat cleared.")
