@@ -18,6 +18,9 @@ st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
 
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 if "vector_db" not in st.session_state:
     st.session_state["vector_db"] = None
 
@@ -26,15 +29,7 @@ if "agent" not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
-# -------------------------------
-# Session State
-# -------------------------------
-if "agent" not in st.session_state:
-    st.session_state.agent = None
-if "vector_db" not in st.session_state:
-    st.session_state.vector_db = None
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+
 
 
 # -------------------------------
@@ -46,10 +41,12 @@ def retrieve_context(question: str) -> str:
     Retrieve relevant information from the uploaded PDF.
     Returns top-3 chunks of text.
     """
-    if st.session_state.vector_db is None:
+    vector_db = st.session_state.get("vector_db")
+
+    if vector_db is None:
         return "No PDF has been uploaded."
 
-    docs = st.session_state.vector_db.similarity_search(question, k=3)
+    docs = vector_db.similarity_search(question, k=3)
     if not docs:
         return "No relevant information found."
 
@@ -106,18 +103,35 @@ def process_pdf(uploaded_file):
 # -------------------------------
 # Upload PDF
 # -------------------------------
+
 uploaded_file = st.file_uploader("Upload PDF", type="pdf")
 
-if uploaded_file is not None and st.session_state.vector_db is None:
+if uploaded_file is not None and st.session_state.agent is None:
+
+    # Reset old PDF data
+    st.session_state.vector_db = None
+    st.session_state.agent = None
+    st.session_state.chat_history = []
+
+    # Process new PDF
     st.session_state.vector_db = process_pdf(uploaded_file)
     st.session_state.agent = create_pdf_agent()
+
     st.success("✅ PDF Uploaded Successfully")
 
 
 # -------------------------------
 # Chat Interface
 # -------------------------------
-if st.session_state.agent:
+# -------------------------------
+# Chat Interface
+# -------------------------------
+if st.session_state.get("agent") is not None:
+
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
     question = st.chat_input("Ask anything...")
     if question:
         st.session_state.chat_history.append({"role": "user", "content": question})
