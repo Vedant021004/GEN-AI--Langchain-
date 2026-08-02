@@ -2,17 +2,26 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_groq import ChatGroq
 from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from dotenv import load_dotenv
+import os
 
-# Global Objects
+load_dotenv()
 
-llm = ChatOllama(
-    model="llama3.2:latest"
+# api
+hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
+
+# model
+llm = ChatGroq(
+    model="openai/gpt-oss-20b",
+    
 )
 
-embedding_model = OllamaEmbeddings(
-    model="nomic-embed-text"
+embedding_model = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 vector_store = None
@@ -41,7 +50,7 @@ def load_pdf(file_path: str) -> str:
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=embedding_model,
-        persist_directory="./vector_db"
+        persist_directory="./hf_vector_db"
     )
 
     return f"Successfully stored {len(chunks)} chunks."

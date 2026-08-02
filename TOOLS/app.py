@@ -1,168 +1,136 @@
-import tempfile
 import streamlit as st
+import tempfile, os
 
-from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import InMemoryVectorStore
+from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 
+# -------------------------------
+# Streamlit Config
+# -------------------------------
 st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
-
-# ------------------------------------
-# Global Variables
-# ------------------------------------
-
-vector_db = None
-agent = None
-
-
-# ------------------------------------
-# Models
-# ------------------------------------
-
-llm = ChatOllama(
-    model="qwen3:latest"
-)
-
-embedding = OllamaEmbeddings(
-    model="nomic-embed-text"
-)
+# -------------------------------
+# Session State
+# -------------------------------
+if "agent" not in st.session_state:
+    st.session_state.agent = None
+if "vector_db" not in st.session_state:
+    st.session_state.vector_db = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 
-# ------------------------------------
+# -------------------------------
 # Tool
-# ------------------------------------
-
+# -------------------------------
 @tool
 def retrieve_context(question: str) -> str:
     """
     Retrieve relevant information from the uploaded PDF.
+    Returns top-3 chunks of text.
     """
-
-    global vector_db
-
-    print("Tool Called")
-
-    if vector_db is None:
+    if st.session_state.vector_db is None:
         return "No PDF has been uploaded."
 
-    docs = vector_db.similarity_search(
-        query=question,
-        k=3
-    )
-
-    if len(docs) == 0:
+    docs = st.session_state.vector_db.similarity_search(question, k=3)
+    if not docs:
         return "No relevant information found."
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
-
-    print(context)
-
+    context = "\n\n".join(doc.page_content for doc in docs)
     return context
 
 
-# ------------------------------------
-# Upload PDF
-# ------------------------------------
-
-uploaded_file = st.file_uploader(
-    "Upload PDF",
-    type="pdf"
-)
-
-if uploaded_file is not None:
-
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf"
-    ) as temp:
-
-        temp.write(uploaded_file.read())
-
-        pdf_path = temp.name
-
-    loader = PyPDFLoader(pdf_path)
-
-    docs = loader.load()
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+# -------------------------------
+# Agent Creation
+# -------------------------------
+def create_pdf_agent():
+    llm = ChatGroq(
+        model="openai/gpt-oss-20b",
+        api_key=st.secrets["GROQ_API_KEY"]
     )
-
-    chunks = splitter.split_documents(docs)
-
-    vector_db = InMemoryVectorStore.from_documents(
-        documents=chunks,
-        embedding=embedding
-    )
-
     memory = InMemorySaver()
 
-    agent = create_agent(
+    return create_agent(
         model=llm,
         tools=[retrieve_context],
         system_prompt="""
 You are a PDF Assistant.
-
-You MUST call retrieve_context before answering any question.
-
+Always use the retrieve_context tool to answer questions about the uploaded PDF.
 Never answer from your own knowledge.
-
-Use ONLY the retrieved context.
-
-If the answer is not present,
-reply:
-
-'I couldn't find that information in the uploaded PDF.'
+Only use information returned by retrieve_context.
+If the retrieved context does not contain the answer, reply exactly:
+"I couldn't find that information in the uploaded PDF."
 """,
         checkpointer=memory
     )
 
+
+# -------------------------------
+# PDF Processing
+# -------------------------------
+def process_pdf(uploaded_file):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp:
+        temp.write(uploaded_file.read())
+        pdf_path = temp.name
+
+    loader = PyPDFLoader(pdf_path)
+    docs = loader.load()
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    chunks = splitter.split_documents(docs)
+
+    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    vector_db = Chroma.from_documents(documents=chunks, embedding=embedding)
+
+    os.remove(pdf_path)  # cleanup temp file
+    return vector_db
+
+
+# -------------------------------
+# Upload PDF
+# -------------------------------
+uploaded_file = st.file_uploader("Upload PDF", type="pdf")
+
+if uploaded_file is not None and st.session_state.vector_db is None:
+    st.session_state.vector_db = process_pdf(uploaded_file)
+    st.session_state.agent = create_pdf_agent()
     st.success("✅ PDF Uploaded Successfully")
 
-    st.session_state.agent = agent
 
-
-# ------------------------------------
-# Chat
-# ------------------------------------
-
-if "agent" in st.session_state:
-
+# -------------------------------
+# Chat Interface
+# -------------------------------
+if st.session_state.agent:
     question = st.chat_input("Ask anything...")
-
     if question:
-
+        st.session_state.chat_history.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.write(question)
 
-        response = st.session_state.agent.invoke(
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": question
-                    }
-                ]
-            },
-            config={
-                "configurable": {
-                    "thread_id": "1"
-                }
-            }
-        )
+        try:
+            response = st.session_state.agent.invoke(
+                {"messages": [{"role": "user", "content": question}]},
+                config={"configurable": {"thread_id": "1"}}
+            )
+            answer = response["messages"][-1].content
+        except Exception as e:
+            answer = f"⚠️ Error: {str(e)}"
 
-        answer = response["messages"][-1].content
-
+        st.session_state.chat_history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
             st.write(answer)
+
+# -------------------------------
+# Clear Chat
+# -------------------------------
+if st.button("🗑️ Clear Chat"):
+    st.session_state.chat_history = []
+    st.success("Chat cleared.")
