@@ -17,6 +17,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
+
+if "vector_db" not in st.session_state:
+    st.session_state["vector_db"] = None
+
+if "agent" not in st.session_state:
+    st.session_state["agent"] = None
+
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
 # -------------------------------
 # Session State
 # -------------------------------
