@@ -18,6 +18,19 @@ st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
 # -------------------------------
+# Global (non-session) state
+# -------------------------------
+# IMPORTANT: create_agent/LangGraph may execute tool calls in a background
+# thread, and background threads do NOT have access to st.session_state
+# (it's thread-local to the main Streamlit script run). So the retrieval
+# tool must NOT depend on st.session_state at all - use a plain module
+# global instead, which is visible from any thread.
+APP_STATE = {
+    "vector_db": None,
+    "raw_chunks": [],
+}
+
+# -------------------------------
 # Session State Initialization
 # -------------------------------
 if "chat_history" not in st.session_state:
@@ -44,8 +57,8 @@ def retrieve_context(question: str) -> str:
     with semantic vector search (good for conceptual questions).
     Always call this tool before answering any question about the PDF.
     """
-    vector_db = st.session_state.get("vector_db")
-    raw_chunks = st.session_state.get("raw_chunks", [])
+    vector_db = APP_STATE.get("vector_db")
+    raw_chunks = APP_STATE.get("raw_chunks", [])
 
     if vector_db is None:
         return "No PDF has been uploaded."
@@ -78,8 +91,8 @@ def retrieve_context(question: str) -> str:
             seen.add(r)
             deduped.append(r)
 
-    # Save for debug panel
-    st.session_state["last_retrieval_debug"] = "\n\n---\n\n".join(deduped[:8]) if deduped else "(nothing retrieved)"
+    # Save for debug panel (APP_STATE, not session_state - see note above)
+    APP_STATE["last_retrieval_debug"] = "\n\n---\n\n".join(deduped[:8]) if deduped else "(nothing retrieved)"
 
     if not deduped:
         return "No relevant information found."
@@ -168,10 +181,14 @@ if uploaded_file is not None and st.session_state["agent"] is None:
     st.session_state["agent"] = None
     st.session_state["chat_history"] = []
     st.session_state["raw_chunks"] = []
+    APP_STATE["vector_db"] = None
+    APP_STATE["raw_chunks"] = []
 
     with st.spinner("Processing PDF..."):
         vector_db, raw_chunks = process_pdf(uploaded_file)
-        st.session_state["vector_db"] = vector_db
+        APP_STATE["vector_db"] = vector_db
+        APP_STATE["raw_chunks"] = raw_chunks
+        st.session_state["vector_db"] = vector_db  # kept for sidebar chunk-count display only
         st.session_state["raw_chunks"] = raw_chunks
         st.session_state["agent"] = create_pdf_agent()
 
@@ -207,7 +224,7 @@ if st.session_state.get("agent") is not None:
             st.write(answer)
             if show_debug:
                 with st.expander("Retrieved context (debug)"):
-                    st.text(st.session_state.get("last_retrieval_debug", "(none)"))
+                    st.text(APP_STATE.get("last_retrieval_debug", "(none)"))
 
 # -------------------------------
 # Clear Chat
