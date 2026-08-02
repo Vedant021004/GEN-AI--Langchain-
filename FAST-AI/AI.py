@@ -7,13 +7,9 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 import os
 
-# ---------------- Load Environment ---------------- #
 
-load_dotenv()
 
-# ---------------- Session State ---------------- #
 
-groq_key = os.getenv("GROQ_API_KEY")
 
 if "memory" not in st.session_state:
     st.session_state.memory = MemorySaver()
