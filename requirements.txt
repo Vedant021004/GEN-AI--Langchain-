@@ -11,3 +11,4 @@ torch
 torchvision
 pypdf
 langgraph
+langchain_tavily

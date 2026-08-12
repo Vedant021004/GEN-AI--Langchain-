@@ -1,19 +1,6 @@
-class Calculator:
+from dotenv import load_dotenv
+import os
 
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
+load_dotenv()
 
-        print("Constructor Called")
-        print(id(self))
-
-        # Calling a function from the constructor
-        self.add()
-
-    def add(self):
-        print("Addition =", self.a + self.b)
-
-
-calc = Calculator(10, 20)
-
-print(id(calc))
+print(os.getenv("TAVILY_API_KEY"))
