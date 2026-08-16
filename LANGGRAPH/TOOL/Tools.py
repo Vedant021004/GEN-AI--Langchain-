@@ -68,9 +68,9 @@ for m in response['messages']:
     m.pretty_print()
 
 
-# png = graph.get_graph().draw_mermaid_png()
+png = graph.get_graph().draw_mermaid_png()
 
-# with open("graph.png", "wb") as f:
-#     f.write(png)
+with open("graphh.png", "wb") as f:
+    f.write(png)
 
-# print("Graph saved as graph.png")
+print("Graph saved as graph.png")
