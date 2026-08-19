@@ -1,50 +1,31 @@
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings, ChatOllama
-from langchain_chroma import Chroma
+from genai_shared.llms import ollama_embeddings, ollama_llm
+from genai_shared.chat import chat_loop
+from genai_shared.rag import build_vector_store, format_docs, load_pdf_chunks
 
 # LLM
-llm = ChatOllama(
-    model="llama3.2"
-)
+llm = ollama_llm()
 
-# Load PDF
-loader = PyPDFLoader("Vedant_Kapil_Resume.pdf")
-docs = loader.load()
-
-# Split
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500,
-    chunk_overlap=100
-)
-
-# Chunks
-chunks = splitter.split_documents(docs)
+chunks = load_pdf_chunks("Vedant_Kapil_Resume.pdf")
 
 # Embeddings
-embeddings = OllamaEmbeddings(
-    model="nomic-embed-text"
-)
+embeddings = ollama_embeddings()
 
 # Vector Database
-vectorstore = Chroma.from_documents(
-    documents=chunks,
-    embedding=embeddings,
-    persist_directory="./chroma_db"
-)
+vectorstore = build_vector_store(chunks, embeddings, persist_directory="./chroma_db")
 
-while True:
 
-    question = input("Ask: ")
-
-    if question.lower() == "bye":
-        print("Thank you")
-        break
-
+def respond(question):
     results = vectorstore.similarity_search(
         question,
         k=2
     )
+    return format_docs(results, separator="\n")
 
-    for doc in results:
-        print(doc.page_content)
+
+chat_loop(
+    respond,
+    prompt="Ask: ",
+    exit_words=frozenset({"bye"}),
+    farewell="Thank you",
+    answer_format="{answer}",
+)

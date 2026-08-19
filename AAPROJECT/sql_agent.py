@@ -1,10 +1,9 @@
-from langchain_community.utilities import SQLDatabase
-from langchain_ollama import ChatOllama
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain.agents import create_agent
+from genai_shared.chat import agent_responder, chat_loop
+from genai_shared.llms import ollama_llm
+from genai_shared.sql_agents import build_sql_agent, connect_db
 
-db = SQLDatabase.from_uri(
+db = connect_db(
     "mysql+pymysql://root:ved%40nt@127.0.0.1:3306/analyzer_ai"
 )
 
@@ -21,18 +20,7 @@ db.run(
 )
 
 
-#LLM
-llm = ChatOllama(
-    model="qwen3:latest"
-)
-
-# SQL Toolkit
-toolkit = SQLDatabaseToolkit(
-    db=db,
-    llm=llm
-)
-
-tools = toolkit.get_tools()
+llm = ollama_llm(model="qwen3:latest")
 
 # Memory
 memory = InMemorySaver()
@@ -60,49 +48,19 @@ Rules:
 """
 
 
-# Agent
-agent = create_agent(
-    model=llm,
-    tools=tools,
-    system_prompt=system_prompt,
-    checkpointer=memory
-)
+agent = build_sql_agent(db, llm, system_prompt, checkpointer=memory)
 
 print("=" * 60)
 print("TaskBot - Manage Your Tasks")
 print("Type 'exit' to quit.")
 print("=" * 60)
 
-thread_id = "vedant"
-thread_id = "rahul"
-thread_id = "priya"
-thread_id = "amit"
-
-
 thread_id = input("Enter your User ID: ")
 
-while True:
 
-    prompt = input("\nYou: ")
-
-    if prompt.lower() in ["exit", "quit"]:
-        break
-
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        },
-        config={
-            "configurable": {
-                "thread_id": thread_id
-            }
-        }
-    )
-
-    print("\nAssistant:")
-    print(response["messages"][-1].content)
+chat_loop(
+    agent_responder(agent, thread_id),
+    prompt="\nYou: ",
+    exit_words=frozenset({"exit", "quit"}),
+    answer_format="\nAssistant:\n{answer}",
+)

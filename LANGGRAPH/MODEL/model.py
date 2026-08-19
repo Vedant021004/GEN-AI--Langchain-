@@ -1,20 +1,14 @@
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START,END
 from pydantic import BaseModel
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.message import add_messages
 from typing import Annotated
-
-
-load_dotenv()
+from genai_shared.chat import agent_responder, chat_loop
+from genai_shared.llms import groq_llm
 
 memory = InMemorySaver()
 
-llm = ChatGroq(
-    model="openai/gpt-oss-20b",
-    
-)
+llm = groq_llm()
 
 class Chatstate(BaseModel):
     messages:Annotated[list,add_messages]
@@ -40,21 +34,9 @@ graph = graph.compile(checkpointer=memory)
 
 
 
-while True:
-
-    question = input("ASK: ")
-    if question.lower() in [ "bye", "done", "exit"]:
-        break
-    res = graph.invoke({
-            "messages": 
-                    
-                [{"role": "user",
-                "content": question}]
-            
-                },
-                config = {"configurable":{"thread_id": "1"}}
-                )
-
-    result = res["messages"][-1].content
-
-    print(result)
+chat_loop(
+    agent_responder(graph),
+    prompt="ASK: ",
+    exit_words=frozenset({"bye", "done", "exit"}),
+    answer_format="{answer}",
+)

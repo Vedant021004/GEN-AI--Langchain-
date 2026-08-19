@@ -1,9 +1,6 @@
-from langchain_ollama import ChatOllama
+from genai_shared.llms import ollama_llm
 
-llm = ChatOllama(
-    model = "llama3.2",
-    streaming = True
-)
+llm = ollama_llm(model="llama3.2", streaming=True)
 
 res = llm.stream("my name is vedant kapil and please introduce me in front of a interviewer")
 

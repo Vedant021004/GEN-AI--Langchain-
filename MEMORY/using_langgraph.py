@@ -1,11 +1,9 @@
-from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
+from genai_shared.chat import agent_responder, chat_loop
+from genai_shared.llms import ollama_llm
 
-
-llm = ChatOllama(
-    model="llama3.2"
-)
+llm = ollama_llm()
 
 memory = MemorySaver()
 
@@ -14,20 +12,8 @@ agent = create_agent(
     checkpointer=memory
 )
 
-config = {
-    "configurable": {"thread_id": "1"}
-}
-
-while True:
-
-    user = input("Ask: ")
-
-    if user.lower() == "bye":
-        break
-
-    res = agent.invoke(
-        {"messages": [{"role": "user", "content": user}]},
-        config=config
-    )
-
-    print("AI:", res["messages"][-1].content)
+chat_loop(
+    agent_responder(agent),
+    prompt="Ask: ",
+    exit_words=frozenset({"bye"}),
+)

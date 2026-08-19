@@ -1,19 +1,12 @@
-import os
-from dotenv import load_dotenv
-
 # langchain tools
-from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langgraph.prebuilt import ToolNode
-
-# langgraph tools
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph, END, MessagesState
+from langgraph.graph import MessagesState
 
 
-load_dotenv()
+from genai_shared.llms import groq_llm
 
 # creating the class
 class AgentState(MessagesState):
@@ -37,12 +30,7 @@ def write_summary(content: str) -> str:
     return summary
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-20b"
-)
-
-
-from langchain.agents import create_agent
+llm = groq_llm()
 
 
 # Define agent functions (simpler approach)

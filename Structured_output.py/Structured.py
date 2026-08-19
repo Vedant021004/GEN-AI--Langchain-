@@ -1,34 +1,16 @@
-from langchain_ollama import ChatOllama
 from pydantic import BaseModel,Field
 from typing import List
+from genai_shared.chat import chat_loop, history_responder
+from genai_shared.llms import ollama_llm
 
-
-llm = ChatOllama(model = "llama3.2")
-
-
-history = []
-
-while True:
- 
-  user = input("Hey im AI: ")
-
-  if user.lower() in ["bye","exit","ok"]:
-       print("thanks for visiting ")
-       break 
- 
-  history.append({
-        "role": "user",
-        "content": user
-    })
-
-  response = llm.invoke(history)
-
-  print("AI : ", response.content)
-
-  history.append({
-        "role": "assistant",
-        "content": response.content
-    })
+llm = ollama_llm()
+chat_loop(
+    history_responder(llm),
+    prompt="Hey im AI: ",
+    exit_words=frozenset({"bye", "exit", "ok"}),
+    farewell="thanks for visiting ",
+    answer_format="AI :  {answer}",
+)
 
 data = "hello my name is vedant kapil "\
        "my email is vedantkp79@gmail.com and my age is 21"

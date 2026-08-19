@@ -1,18 +1,10 @@
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel
 from langgraph.graph.message import add_messages
 from typing import Annotated
+from genai_shared.llms import groq_llm
 
-
-
-
-load_dotenv()
-
-llm = ChatGroq(
-    model="openai/gpt-oss-20b"
-)
+llm = groq_llm()
 
 class State(BaseModel):
     messages: Annotated[list, add_messages]

@@ -1,18 +1,10 @@
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from langchain_community.tools import GoogleSerperRun
-
-
-
-from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
-# from langchain_community.utilities import GoogleSerperAPIWrapper 
+from genai_shared.chat import DEFAULT_EXIT_WORDS, agent_responder, chat_loop
+from genai_shared.llms import ollama_llm
 
-
-llm = ChatOllama(model = "llama3.2")
+llm = ollama_llm()
 search = GoogleSerperRun()
 
 # res = search.run("what is top 10 news of today")
@@ -33,14 +25,8 @@ agent = create_agent(
     checkpointer = MemorySaver()
 )
 
-while True:
-    question = input("ASK:  ")
-    if question.lower() in "done":
-        break
-    response = agent.invoke(
-                {"messages":[{"role":"user", "content":question}]}, 
-                {"configurable": {"thread_id": "1"}}, 
-
-    )
-
-    print("AI:",  response["messages"][-1].content)
+chat_loop(
+    agent_responder(agent),
+    prompt="ASK:  ",
+    exit_words=DEFAULT_EXIT_WORDS,
+)
