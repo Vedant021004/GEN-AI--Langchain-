@@ -3,7 +3,8 @@
 import os
 from dataclasses import dataclass, field
 
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+# Override with DEEPSCOPE_MODEL if your Groq account exposes a different set.
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
 @dataclass

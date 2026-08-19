@@ -45,6 +45,7 @@ sub-questions, deduplicated sources, per-question findings and the log.
 pip install -r deepscope/requirements.txt
 export GROQ_API_KEY=...            # free at https://console.groq.com
 export TAVILY_API_KEY=...          # optional, better search quality
+export DEEPSCOPE_MODEL=...         # optional, defaults to openai/gpt-oss-120b on Groq
 
 streamlit run deepscope/app.py
 # or
