@@ -27,3 +27,5 @@ while True:
         "role": "assistant",
         "content": response.content
     })
+
+print(history)    
