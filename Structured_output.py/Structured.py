@@ -9,7 +9,7 @@ chat_loop(
     prompt="Hey im AI: ",
     exit_words=frozenset({"bye", "exit", "ok"}),
     farewell="thanks for visiting ",
-    answer_prefix="AI : ",
+    answer_format="AI :  {answer}",
 )
 
 data = "hello my name is vedant kapil "\

@@ -3,11 +3,14 @@ from genai_shared.chat import agent_responder, chat_loop
 from genai_shared.llms import ollama_llm
 from genai_shared.sql_agents import build_sql_agent, connect_db
 
-db = connect_db("mysql+pymysql://root:ved%40nt@127.0.0.1:3306/analyzer_ai")
+db = connect_db(
+    "mysql+pymysql://root:ved%40nt@127.0.0.1:3306/analyzer_ai"
+)
 
 print(db.get_usable_table_names())
 
-db.run("""CREATE TABLE employees (
+db.run(
+    """CREATE TABLE employees (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100),
     department VARCHAR(50),
@@ -55,13 +58,9 @@ print("=" * 60)
 thread_id = input("Enter your User ID: ")
 
 
-def respond(prompt):
-    return f"\nAssistant:\n{agent_responder(agent, thread_id)(prompt)}"
-
-
 chat_loop(
-    respond,
+    agent_responder(agent, thread_id),
     prompt="\nYou: ",
     exit_words=frozenset({"exit", "quit"}),
-    answer_prefix="",
+    answer_format="\nAssistant:\n{answer}",
 )

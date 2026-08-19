@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.message import add_messages
 from typing import Annotated
-from genai_shared.chat import last_message_text, thread_config, user_message
+from genai_shared.chat import agent_responder, chat_loop
 from genai_shared.llms import groq_llm
 
 memory = InMemorySaver()
@@ -34,16 +34,9 @@ graph = graph.compile(checkpointer=memory)
 
 
 
-while True:
-
-    question = input("ASK: ")
-    if question.lower() in [ "bye", "done", "exit"]:
-        break
-    res = graph.invoke(
-        user_message(question),
-        config=thread_config()
-    )
-
-    result = last_message_text(res)
-
-    print(result)
+chat_loop(
+    agent_responder(graph),
+    prompt="ASK: ",
+    exit_words=frozenset({"bye", "done", "exit"}),
+    answer_format="{answer}",
+)

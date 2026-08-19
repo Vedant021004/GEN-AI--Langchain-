@@ -11,7 +11,7 @@ def chat_loop(
     prompt: str = "You: ",
     exit_words: frozenset[str] | set[str] | list[str] = DEFAULT_EXIT_WORDS,
     farewell: str | None = None,
-    answer_prefix: str = "AI:",
+    answer_format: str = "AI: {answer}",
 ) -> None:
     """Read prompts until an exit word and print each response."""
     while True:
@@ -21,7 +21,7 @@ def chat_loop(
                 print(farewell)
             break
         answer = respond(text)
-        print(f"{answer_prefix} {answer}" if answer_prefix else answer)
+        print(answer_format.format(answer=answer))
 
 
 def user_message(text: str) -> dict[str, list[dict[str, str]]]:

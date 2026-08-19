@@ -52,13 +52,9 @@ print("=" * 60)
 thread_id = "amit"
 
 
-def respond(prompt):
-    return f"\nAssistant:\n{agent_responder(agent, thread_id)(prompt)}"
-
-
 chat_loop(
-    respond,
+    agent_responder(agent, thread_id),
     prompt="\nYou: ",
     exit_words=frozenset({"exit", "quit"}),
-    answer_prefix="",
+    answer_format="\nAssistant:\n{answer}",
 )
