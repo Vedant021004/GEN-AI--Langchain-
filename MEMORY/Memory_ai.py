@@ -1,31 +1,12 @@
-from langchain_ollama import ChatOllama
+from genai_shared.chat import chat_loop, history_responder
+from genai_shared.llms import ollama_llm
 
-llm = ChatOllama(
-    model="llama3.2"
+llm = ollama_llm()
+respond = history_responder(llm)
+chat_loop(
+    respond,
+    prompt="User: ",
+    exit_words=frozenset({"bye", "done", "exit"}),
+    farewell="Tata bhai ji",
 )
-
-history = []
-
-while True:
-
-    query = input("User: ")
-
-    if query.lower() in ["bye", "done", "exit"]:
-        print("Tata bhai ji")
-        break
-
-    history.append({
-        "role": "user",
-        "content": query
-    })
-
-    response = llm.invoke(history)
-
-    print("AI:", response.content)
-
-    history.append({
-        "role": "assistant",
-        "content": response.content
-    })
-
-print(history)    
+print(respond.history)

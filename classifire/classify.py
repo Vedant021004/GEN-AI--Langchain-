@@ -1,13 +1,10 @@
 import json
 
-from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
+from genai_shared.llms import ollama_llm
 
 # Load LLM
-llm = ChatOllama(
-    model="qwen3:latest",
-    temperature=0
-)
+llm = ollama_llm(model="qwen3:latest", temperature=0)
 
 # System Prompt
 system_prompt = """

@@ -1,28 +1,13 @@
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-# api
-hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+from genai_shared.llms import groq_llm, hf_embeddings
+from genai_shared.rag import build_vector_store, format_docs, load_pdf_chunks
 
 
 # model
-llm = ChatGroq(
-    model="openai/gpt-oss-20b",
-    
-)
+llm = groq_llm()
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+embedding_model = hf_embeddings()
 
 vector_store = None
 
@@ -36,21 +21,11 @@ def load_pdf(file_path: str) -> str:
 
     global vector_store
 
-    loader = PyPDFLoader(file_path)
-
-    documents = loader.load()
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
-    )
-
-    chunks = splitter.split_documents(documents)
-
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embedding_model,
-        persist_directory="./hf_vector_db"
+    chunks = load_pdf_chunks(file_path)
+    vector_store = build_vector_store(
+        chunks,
+        embedding_model,
+        persist_directory="./hf_vector_db",
     )
 
     return f"Successfully stored {len(chunks)} chunks."
@@ -73,12 +48,7 @@ def retrieve_context(question: str) -> str:
         k=3
     )
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
-
-    return context
+    return format_docs(docs)
 
 # Create Agent
 

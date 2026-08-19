@@ -1,16 +1,10 @@
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
-from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain.agents import create_agent
-
-load_dotenv()
+from genai_shared.chat import agent_responder, chat_loop
+from genai_shared.llms import ollama_llm
+from genai_shared.sql_agents import build_sql_agent, connect_db
 
 # Database
-db = SQLDatabase.from_uri("sqlite:///my_tasks.db")
-
-db.run("""
+db = connect_db("sqlite:///my_tasks.db", """
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -21,17 +15,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 """)
 
 # LLM
-model = ChatOllama(
-    model="llama3.2"
-)
-
-# SQL Toolkit
-toolkit = SQLDatabaseToolkit(
-    db=db,
-    llm=model
-)
-
-tools = toolkit.get_tools()
+model = ollama_llm()
 
 # Memory
 memory = InMemorySaver()
@@ -58,46 +42,23 @@ Rules:
 """
 
 # Agent
-agent = create_agent(
-    model=model,
-    tools=tools,
-    system_prompt=system_prompt,
-    checkpointer=memory
-)
+agent = build_sql_agent(db, model, system_prompt, checkpointer=memory)
 
 print("=" * 60)
 print("TaskBot - Manage Your Tasks")
 print("Type 'exit' to quit.")
 print("=" * 60)
 
-thread_id = "vedant"
-thread_id = "rahul"
-thread_id = "priya"
 thread_id = "amit"
 
 
-while True:
+def respond(prompt):
+    return f"\nAssistant:\n{agent_responder(agent, thread_id)(prompt)}"
 
-    prompt = input("\nYou: ")
 
-    if prompt.lower() in ["exit", "quit"]:
-        break
-
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        },
-        config={
-            "configurable": {
-                "thread_id": thread_id
-            }
-        }
-    )
-
-    print("\nAssistant:")
-    print(response["messages"][-1].content)
+chat_loop(
+    respond,
+    prompt="\nYou: ",
+    exit_words=frozenset({"exit", "quit"}),
+    answer_prefix="",
+)

@@ -1,10 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
+from genai_shared.llms import groq_llm
 
-from langchain_groq import ChatGroq
-
-
-llm = ChatGroq(
-    model="openai/gpt-oss-20b"
-)
-
+llm = groq_llm()
