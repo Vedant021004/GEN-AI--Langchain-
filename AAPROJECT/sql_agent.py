@@ -1,12 +1,23 @@
+import os
+
+from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
 from langchain_ollama import ChatOllama
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents import create_agent
 
-db = SQLDatabase.from_uri(
-    "mysql+pymysql://root:ved%40nt@127.0.0.1:3306/analyzer_ai"
-)
+load_dotenv()
+
+database_uri = os.getenv("DATABASE_URI")
+
+if not database_uri:
+    raise RuntimeError(
+        "DATABASE_URI is not set. Add it to your .env file, e.g. "
+        "mysql+pymysql://user:password@127.0.0.1:3306/analyzer_ai"
+    )
+
+db = SQLDatabase.from_uri(database_uri)
 
 print(db.get_usable_table_names())
 

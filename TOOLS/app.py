@@ -1,5 +1,6 @@
 import streamlit as st
-import tempfile, os
+import logging
+import tempfile, os, uuid
 
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -18,47 +19,48 @@ st.set_page_config(page_title="Agentic PDF Chatbot")
 st.title("📄 Agentic PDF Chatbot")
 
 # -------------------------------
-# Global (non-session) state
-# -------------------------------
-# IMPORTANT: create_agent/LangGraph may execute tool calls in a background
-# thread, and background threads do NOT have access to st.session_state
-# (it's thread-local to the main Streamlit script run). So the retrieval
-# tool must NOT depend on st.session_state at all - use a plain module
-# global instead, which is visible from any thread.
-APP_STATE = {
-    "vector_db": None,
-    "raw_chunks": [],
-}
-
-# -------------------------------
 # Session State Initialization
 # -------------------------------
+# Each browser session gets its own document store. The store is a plain dict
+# (not st.session_state) because LangGraph may run tool calls in a background
+# thread, where st.session_state is not available; the dict is captured by the
+# retrieval tool closure so it stays scoped to this session only.
+if "store" not in st.session_state:
+    st.session_state["store"] = {
+        "vector_db": None,
+        "raw_chunks": [],
+        "last_retrieval_debug": "",
+    }
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
-if "vector_db" not in st.session_state:
-    st.session_state["vector_db"] = None
 if "agent" not in st.session_state:
     st.session_state["agent"] = None
-if "raw_chunks" not in st.session_state:
-    # Keeps plain text of every chunk for keyword fallback search
-    st.session_state["raw_chunks"] = []
-if "last_retrieval_debug" not in st.session_state:
-    st.session_state["last_retrieval_debug"] = ""
+if "thread_id" not in st.session_state:
+    st.session_state["thread_id"] = str(uuid.uuid4())
+
+store = st.session_state["store"]
 
 
 # -------------------------------
 # Hybrid Retrieval Tool
 # (keyword match + semantic search, deduped)
 # -------------------------------
-@tool
-def retrieve_context(question: str) -> str:
-    """Retrieve relevant information from the uploaded PDF.
-    Combines exact keyword matching (good for names, numbers, IDs)
-    with semantic vector search (good for conceptual questions).
-    Always call this tool before answering any question about the PDF.
-    """
-    vector_db = APP_STATE.get("vector_db")
-    raw_chunks = APP_STATE.get("raw_chunks", [])
+def make_retrieve_context(store):
+    @tool
+    def retrieve_context(question: str) -> str:
+        """Retrieve relevant information from the uploaded PDF.
+        Combines exact keyword matching (good for names, numbers, IDs)
+        with semantic vector search (good for conceptual questions).
+        Always call this tool before answering any question about the PDF.
+        """
+        return _retrieve(store, question)
+
+    return retrieve_context
+
+
+def _retrieve(store, question: str) -> str:
+    vector_db = store.get("vector_db")
+    raw_chunks = store.get("raw_chunks", [])
 
     if vector_db is None:
         return "No PDF has been uploaded."
@@ -91,8 +93,7 @@ def retrieve_context(question: str) -> str:
             seen.add(r)
             deduped.append(r)
 
-    # Save for debug panel (APP_STATE, not session_state - see note above)
-    APP_STATE["last_retrieval_debug"] = "\n\n---\n\n".join(deduped[:8]) if deduped else "(nothing retrieved)"
+    store["last_retrieval_debug"] = "\n\n---\n\n".join(deduped[:8]) if deduped else "(nothing retrieved)"
 
     if not deduped:
         return "No relevant information found."
@@ -104,17 +105,22 @@ def retrieve_context(question: str) -> str:
 # -------------------------------
 # Agent Creation
 # -------------------------------
-def create_pdf_agent():
+def create_pdf_agent(store):
+    api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        st.error("GROQ_API_KEY is not configured. Set it in Streamlit secrets or the environment.")
+        st.stop()
+
     llm = ChatGroq(
         model="openai/gpt-oss-20b",
-        api_key=st.secrets["GROQ_API_KEY"],
+        api_key=api_key,
         temperature=0,
     )
     memory = InMemorySaver()
 
     return create_agent(
         model=llm,
-        tools=[retrieve_context],
+        tools=[make_retrieve_context(store)],
         system_prompt="""You are a PDF Assistant.
 
 You MUST call the retrieve_context tool for every question about the
@@ -167,8 +173,8 @@ def process_pdf(uploaded_file):
 with st.sidebar:
     st.header("🔍 Debug")
     show_debug = st.checkbox("Show retrieved context", value=False)
-    if st.session_state["vector_db"] is not None:
-        st.caption(f"Chunks indexed: {len(st.session_state['raw_chunks'])}")
+    if store["vector_db"] is not None:
+        st.caption(f"Chunks indexed: {len(store['raw_chunks'])}")
 
 
 # -------------------------------
@@ -177,20 +183,16 @@ with st.sidebar:
 uploaded_file = st.file_uploader("Upload PDF", type="pdf")
 
 if uploaded_file is not None and st.session_state["agent"] is None:
-    st.session_state["vector_db"] = None
     st.session_state["agent"] = None
     st.session_state["chat_history"] = []
-    st.session_state["raw_chunks"] = []
-    APP_STATE["vector_db"] = None
-    APP_STATE["raw_chunks"] = []
+    store["vector_db"] = None
+    store["raw_chunks"] = []
 
     with st.spinner("Processing PDF..."):
         vector_db, raw_chunks = process_pdf(uploaded_file)
-        APP_STATE["vector_db"] = vector_db
-        APP_STATE["raw_chunks"] = raw_chunks
-        st.session_state["vector_db"] = vector_db  # kept for sidebar chunk-count display only
-        st.session_state["raw_chunks"] = raw_chunks
-        st.session_state["agent"] = create_pdf_agent()
+        store["vector_db"] = vector_db
+        store["raw_chunks"] = raw_chunks
+        st.session_state["agent"] = create_pdf_agent(store)
 
     st.success(f"✅ PDF Uploaded Successfully ({len(raw_chunks)} chunks indexed)")
 
@@ -213,18 +215,19 @@ if st.session_state.get("agent") is not None:
         try:
             response = st.session_state["agent"].invoke(
                 {"messages": [{"role": "user", "content": question}]},
-                config={"configurable": {"thread_id": "1"}},
+                config={"configurable": {"thread_id": st.session_state["thread_id"]}},
             )
             answer = response["messages"][-1].content
-        except Exception as e:
-            answer = f"⚠️ Error: {str(e)}"
+        except Exception:
+            logging.exception("Agent invocation failed")
+            answer = "⚠️ Something went wrong while answering. Please try again."
 
         st.session_state["chat_history"].append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
             st.write(answer)
             if show_debug:
                 with st.expander("Retrieved context (debug)"):
-                    st.text(APP_STATE.get("last_retrieval_debug", "(none)"))
+                    st.text(store.get("last_retrieval_debug", "(none)"))
 
 # -------------------------------
 # Clear Chat
