@@ -1,6 +1,20 @@
 env/
 .venv/
 .env
+.env.*
+!.env.example
 __pycache__/
 .ipynb_checkpoints/
 .vscode/
+.streamlit/secrets.toml
+
+# Local databases and vector stores (may contain user data)
+*.db
+*.sqlite3
+chroma_db/
+hf_vector_db/
+vectorchroma_db/
+
+# LangGraph local runtime state (pickled - do not commit)
+.langgraph_api/
+*.pckl
