@@ -13,6 +13,7 @@ embeddings = ollama_embeddings()
 # Vector Database
 vectorstore = build_vector_store(chunks, embeddings, persist_directory="./chroma_db")
 
+
 def respond(question):
     results = vectorstore.similarity_search(
         question,
