@@ -1,3 +1,5 @@
+import logging
+
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_community.utilities import SQLDatabase
@@ -6,6 +8,9 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents import create_agent
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database
 db = SQLDatabase.from_uri("sqlite:///my_tasks.db")
@@ -83,21 +88,27 @@ while True:
     if prompt.lower() in ["exit", "quit"]:
         break
 
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            },
+            config={
+                "configurable": {
+                    "thread_id": thread_id
                 }
-            ]
-        },
-        config={
-            "configurable": {
-                "thread_id": thread_id
             }
-        }
-    )
+        )
+    except Exception:
+        # Keep the session alive after a failed turn, but log the full traceback.
+        logger.exception("Agent invocation failed for prompt: %s", prompt)
+        print("\nThat request failed. See the logged traceback above and try again.")
+        continue
 
     print("\nAssistant:")
     print(response["messages"][-1].content)

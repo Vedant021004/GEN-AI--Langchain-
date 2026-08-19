@@ -1,4 +1,5 @@
 import streamlit as st
+import logging
 import tempfile, os
 
 from langchain_groq import ChatGroq
@@ -9,6 +10,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # -------------------------------
@@ -76,12 +80,16 @@ def retrieve_context(question: str) -> str:
             results.append(chunk)
 
     # --- 2. Semantic search ---
+    # A failure here must never be mixed into the retrieved context: the model
+    # would treat the error text as PDF content. Report it separately instead.
+    semantic_error = None
     try:
         semantic_docs = vector_db.similarity_search(question, k=5)
         for doc in semantic_docs:
             results.append(doc.page_content)
-    except Exception as e:
-        results.append(f"[Semantic search error: {e}]")
+    except Exception:
+        logger.exception("Semantic search failed for question: %s", question)
+        semantic_error = "Semantic search over the PDF failed."
 
     # --- Dedupe while preserving order ---
     seen = set()
@@ -93,8 +101,14 @@ def retrieve_context(question: str) -> str:
 
     # Save for debug panel (APP_STATE, not session_state - see note above)
     APP_STATE["last_retrieval_debug"] = "\n\n---\n\n".join(deduped[:8]) if deduped else "(nothing retrieved)"
+    APP_STATE["last_retrieval_error"] = semantic_error
 
     if not deduped:
+        if semantic_error:
+            return (
+                "Retrieval failed, so no context is available. "
+                "Tell the user the PDF could not be searched right now."
+            )
         return "No relevant information found."
 
     # Cap how much context we send to the LLM
@@ -105,9 +119,16 @@ def retrieve_context(question: str) -> str:
 # Agent Creation
 # -------------------------------
 def create_pdf_agent():
+    try:
+        groq_api_key = st.secrets["GROQ_API_KEY"]
+    except (KeyError, FileNotFoundError) as e:
+        raise RuntimeError(
+            "GROQ_API_KEY is not configured. Add it to .streamlit/secrets.toml."
+        ) from e
+
     llm = ChatGroq(
         model="openai/gpt-oss-20b",
-        api_key=st.secrets["GROQ_API_KEY"],
+        api_key=groq_api_key,
         temperature=0,
     )
     memory = InMemorySaver()
@@ -156,7 +177,11 @@ def process_pdf(uploaded_file):
 
         raw_chunks = [c.page_content for c in chunks]
     finally:
-        os.remove(pdf_path)
+        # Cleanup must not mask a failure raised while processing the PDF.
+        try:
+            os.remove(pdf_path)
+        except OSError:
+            logger.warning("Could not delete temporary file %s", pdf_path, exc_info=True)
 
     return vector_db, raw_chunks
 
@@ -185,12 +210,23 @@ if uploaded_file is not None and st.session_state["agent"] is None:
     APP_STATE["raw_chunks"] = []
 
     with st.spinner("Processing PDF..."):
-        vector_db, raw_chunks = process_pdf(uploaded_file)
-        APP_STATE["vector_db"] = vector_db
-        APP_STATE["raw_chunks"] = raw_chunks
-        st.session_state["vector_db"] = vector_db  # kept for sidebar chunk-count display only
-        st.session_state["raw_chunks"] = raw_chunks
-        st.session_state["agent"] = create_pdf_agent()
+        try:
+            vector_db, raw_chunks = process_pdf(uploaded_file)
+            APP_STATE["vector_db"] = vector_db
+            APP_STATE["raw_chunks"] = raw_chunks
+            st.session_state["vector_db"] = vector_db  # kept for sidebar chunk-count display only
+            st.session_state["raw_chunks"] = raw_chunks
+            st.session_state["agent"] = create_pdf_agent()
+        except Exception as e:
+            logger.exception("Failed to prepare the agent for the uploaded PDF")
+            # Leave no half-initialised state behind, so the next upload retries cleanly.
+            APP_STATE["vector_db"] = None
+            APP_STATE["raw_chunks"] = []
+            st.session_state["vector_db"] = None
+            st.session_state["raw_chunks"] = []
+            st.session_state["agent"] = None
+            st.error(f"Could not process the PDF: {e}")
+            st.stop()
 
     st.success(f"✅ PDF Uploaded Successfully ({len(raw_chunks)} chunks indexed)")
 
@@ -210,6 +246,7 @@ if st.session_state.get("agent") is not None:
         with st.chat_message("user"):
             st.write(question)
 
+        APP_STATE["last_retrieval_error"] = None
         try:
             response = st.session_state["agent"].invoke(
                 {"messages": [{"role": "user", "content": question}]},
@@ -217,11 +254,19 @@ if st.session_state.get("agent") is not None:
             )
             answer = response["messages"][-1].content
         except Exception as e:
-            answer = f"⚠️ Error: {str(e)}"
+            logger.exception("Agent invocation failed for question: %s", question)
+            # Failures are not answers: surface them as errors and keep them out
+            # of the chat history so they are not replayed as model output.
+            with st.chat_message("assistant"):
+                st.error(f"The assistant failed to answer: {e}")
+            st.stop()
 
         st.session_state["chat_history"].append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
             st.write(answer)
+            retrieval_error = APP_STATE.get("last_retrieval_error")
+            if retrieval_error:
+                st.warning(retrieval_error)
             if show_debug:
                 with st.expander("Retrieved context (debug)"):
                     st.text(APP_STATE.get("last_retrieval_debug", "(none)"))
