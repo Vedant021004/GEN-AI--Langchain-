@@ -1,7 +1,7 @@
 """Offline tests: no API keys, no network."""
 
 from deepscope.config import load_settings
-from deepscope.graph import format_evidence, initial_state
+from deepscope.graph import format_evidence, initial_state, normalize_citations
 from deepscope.llm import parse_string_list
 from deepscope.retrieval import DocumentIndex, tokenize
 
@@ -47,6 +47,10 @@ def test_format_evidence_includes_citation_ids():
     rendered = format_evidence(sources)
     assert "[S1] Paper (tavily)" in rendered
     assert "body" in rendered
+
+
+def test_normalize_citations_rewrites_full_width_brackets():
+    assert normalize_citations("skills 【S5】 and 【S1】") == "skills [S5] and [S1]"
 
 
 def test_initial_state_defaults():

@@ -87,6 +87,11 @@ def initial_state(question: str) -> ResearchState:
     }
 
 
+def normalize_citations(text: str) -> str:
+    """Some models emit full-width brackets (【S5】); keep citations as [S5]."""
+    return text.replace("【", "[").replace("】", "]")
+
+
 def format_evidence(sources: list[Source]) -> str:
     return "\n\n".join(
         f"[{source['id']}] {source['title']} ({source['origin']})\n{source['snippet']}"
@@ -208,6 +213,7 @@ def build_graph(settings: Settings, index: DocumentIndex | None = None):
             f"Question: {state['question']}\n\nFindings:\n{findings}\n\n"
             f"Evidence:\n{format_evidence(sources)}",
         )
+        report = normalize_citations(report)
         citations = "\n".join(
             f"- [{source['id']}] {source['title']}" + (f" — {source['url']}" if source["url"] else "")
             for source in sources

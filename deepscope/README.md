@@ -62,7 +62,11 @@ shared demo machine.
 3. Narrate the trace as it streams: the planner's sub-questions, each search with its new-source count, then the critic's gap list triggering round 2.
 4. Show the final report — point at an `[S#]` citation and match it to the Sources list.
 5. Upload a PDF (e.g. a resume or a paper), ask a question about it, and show the same report now citing `filename p.3` alongside web sources.
-6. Download the markdown report.
+6. Download the markdown report — the trace and report stay on screen.
+
+Tip: with keyless DuckDuckGo, questions about a person's name pull in namesakes.
+For document demos, ask about the content ("which RAG projects are described?")
+rather than the name.
 
 ## Tests
 

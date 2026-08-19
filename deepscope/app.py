@@ -4,13 +4,18 @@ Run with:  streamlit run deepscope/app.py
 """
 
 import os
+import sys
 import tempfile
 
 import streamlit as st
 
-from deepscope.config import load_settings
-from deepscope.graph import stream_research
-from deepscope.retrieval import DocumentIndex
+# `streamlit run deepscope/app.py` puts this file's directory on sys.path, not the
+# repo root, so the package import below needs the parent directory added back.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from deepscope.config import load_settings  # noqa: E402
+from deepscope.graph import stream_research  # noqa: E402
+from deepscope.retrieval import DocumentIndex  # noqa: E402
 
 NODE_LABELS = {
     "plan": "🧭 Planner",
@@ -80,12 +85,13 @@ with st.sidebar:
         settings = _settings()
     else:
         st.success("Groq model ready")
-    st.text_input(
-        "Tavily API key (optional)",
-        type="password",
-        key="tavily_key",
-        help="Without it DeepScope falls back to keyless DuckDuckGo search.",
-    )
+    with st.expander("Better web search (optional)"):
+        st.text_input(
+            "Tavily API key",
+            type="password",
+            key="tavily_key",
+            help="Without it DeepScope falls back to keyless DuckDuckGo search.",
+        )
     settings = _settings()
     st.caption(f"Model: `{settings.model}`  ·  Search: `{settings.search_provider}`")
 
@@ -115,16 +121,13 @@ if start:
     elif not settings.groq_api_key:
         st.error("A Groq API key is required — add one in the sidebar.")
     else:
-        trace_box = st.container()
-        report_box = st.empty()
-        sources_box = st.empty()
         state = {"sources": [], "findings": [], "plan": [], "report": ""}
-
-        with trace_box:
-            st.subheader("Agent trace")
-            trace = st.empty()
         lines: list[str] = []
+        st.session_state["trace"] = lines
+        st.session_state["result"] = state
 
+        st.subheader("Agent trace")
+        trace = st.container(height=280).empty()
         for node, payload in stream_research(question, settings, _index()):
             for entry in payload.get("log", []):
                 lines.append(f"**{NODE_LABELS.get(node, node)}** — {entry}")
@@ -132,16 +135,21 @@ if start:
                 if key in payload:
                     state[key] = payload[key]
             trace.markdown("\n\n".join(lines))
+elif st.session_state.get("trace"):
+    # Streamlit reruns (download click, slider nudge) must not wipe the last run.
+    st.subheader("Agent trace")
+    st.container(height=280).markdown("\n\n".join(st.session_state["trace"]))
 
-        if state["report"]:
-            report_box.markdown(state["report"])
-            st.download_button(
-                "Download report (markdown)",
-                data=state["report"],
-                file_name="deepscope-report.md",
-            )
-        with sources_box.expander(f"Evidence collected ({len(state['sources'])} sources)"):
-            for source in state["sources"]:
-                link = f"[{source['title']}]({source['url']})" if source["url"] else source["title"]
-                st.markdown(f"**[{source['id']}]** {link}  · _{source['origin']}_")
-                st.caption(source["snippet"][:400])
+result = st.session_state.get("result")
+if result and result["report"]:
+    st.markdown(result["report"])
+    st.download_button(
+        "Download report (markdown)",
+        data=result["report"],
+        file_name="deepscope-report.md",
+    )
+    with st.expander(f"Evidence collected ({len(result['sources'])} sources)"):
+        for source in result["sources"]:
+            link = f"[{source['title']}]({source['url']})" if source["url"] else source["title"]
+            st.markdown(f"**[{source['id']}]** {link}  · _{source['origin']}_")
+            st.caption(source["snippet"][:400])
