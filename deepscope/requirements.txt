@@ -1,7 +1,0 @@
-streamlit
-langchain-core
-langchain-groq
-langgraph
-langchain-tavily
-ddgs
-pypdf
