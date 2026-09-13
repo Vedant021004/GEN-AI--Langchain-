@@ -14,8 +14,8 @@ docs = loader.load()
 
 # Split
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=50,
-    chunk_overlap=10
+    chunk_size=500,
+    chunk_overlap=100
 )
 
 # Chunks

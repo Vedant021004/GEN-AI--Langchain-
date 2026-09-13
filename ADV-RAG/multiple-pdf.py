@@ -22,3 +22,24 @@ file = client.files.create(
 
 print("File uploaded!")
 print("File ID:", file.id)
+
+# Parse the uploaded file
+result = client.parsing.create(
+    tier="agentic",
+    version="latest",
+    file_id=file.id
+)
+
+print("Parsing started!")
+print("Parsing ID:", result.id)
+
+# Get the parsed result
+parsed = client.parsing.get(
+    result.id,
+    expand="markdown"
+)
+
+# Print the parsed content
+for page in parsed.markdown.pages:
+    print("\n--- PAGE ---\n")
+    print(page.markdown)

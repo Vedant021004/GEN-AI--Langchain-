@@ -71,9 +71,9 @@ print("Type 'exit' to quit.")
 print("=" * 60)
 
 thread_id = "vedant"
-thread_id = "rahul"
-thread_id = "priya"
-thread_id = "amit"
+thread_id = "riddhi"
+thread_id = "riddhi"
+thread_id = "riddhi"
 
 
 while True:

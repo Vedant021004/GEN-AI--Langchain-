@@ -1,4 +1,4 @@
-# 🤖 Vedant's AI Chatbot
+# 🤖 Vedant's AI Chatbot.
 
 A simple AI chatbot built using **Streamlit**, **LangChain**, and **Ollama**. This chatbot runs **locally** using the **Llama 3.2** model, allowing users to chat with an AI assistant without relying on cloud APIs.
 
