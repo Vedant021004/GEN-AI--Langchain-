@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <div align="center">
 
 # 🤖 Vedant's AI Chatbot
@@ -637,4 +636,4 @@ Give this repository a ⭐ and feel free to contribute!
 GitHub: **[https://github.com/Vedant021004](https://github.com/Vedant021004)**
 
 LinkedIn: **[https://www.linkedin.com/in/vedant-kapil-8a786740a/](https://www.linkedin.com/in/vedant-kapil-8a786740a/)**
->>>>>>> 3884f355b653cdc659197ffb9531395c6de18b08
+
