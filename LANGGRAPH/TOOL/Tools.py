@@ -15,7 +15,7 @@ llm = ChatGroq(
     model="openai/gpt-oss-20b"
 )
 
-tool = TavilySearch(max_results =2)
+tool = TavilySearch(max_results = 2)
 res = tool.invoke("what is the news about the jharkhand today why there is too much caos")
 print(res["results"][0]["content"])
 
