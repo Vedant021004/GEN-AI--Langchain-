@@ -6,9 +6,13 @@ from langchain_groq import ChatGroq
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
+import logging
 import os
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # api
 hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
@@ -35,6 +39,9 @@ def load_pdf(file_path: str) -> str:
     """
 
     global vector_store
+
+    if not os.path.isfile(file_path):
+        return f"No such PDF: {file_path}"
 
     loader = PyPDFLoader(file_path)
 
@@ -68,10 +75,14 @@ def retrieve_context(question: str) -> str:
     if vector_store is None:
         return "No PDF has been uploaded."
 
-    docs = vector_store.similarity_search(
-        question,
-        k=3
-    )
+    try:
+        docs = vector_store.similarity_search(
+            question,
+            k=3
+        )
+    except Exception:
+        logger.exception("Similarity search failed for question: %s", question)
+        return "Retrieval from the PDF failed, so no context is available."
 
     context = "\n\n".join(
         doc.page_content
@@ -127,18 +138,26 @@ while True:
     if prompt.lower() in ["exit", "quit"]:
         break
 
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            },
+            config={
+                "configurable": {
+                    "thread_id": 1
                 }
-            ]
-        },
-        config={
-            "configurable": {
-                "thread_id": 1
             }
-        }
-    )
+        )
+    except Exception:
+        # Keep the session alive after a failed turn, but log the full traceback.
+        logger.exception("Agent invocation failed for prompt: %s", prompt)
+        print("\nThat request failed. See the logged traceback above and try again.")
+        continue
+
+    print("\nAI :", response["messages"][-1].content)

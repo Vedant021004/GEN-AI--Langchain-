@@ -46,8 +46,25 @@ def classify_document(text):
         ]
     )
 
-    # Convert JSON string to Python Dictionary
-    result = json.loads(response.content)
+    # Convert JSON string to Python Dictionary. A model that ignores the
+    # "JSON only" instruction otherwise fails with a bare JSONDecodeError
+    # that does not show what was actually returned.
+    try:
+        result = json.loads(response.content)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Classifier did not return valid JSON. Raw response: {response.content!r}"
+        ) from e
+
+    missing = [
+        key
+        for key in ("document_type", "store_sql", "store_rag", "reason")
+        if key not in result
+    ]
+    if missing:
+        raise ValueError(
+            f"Classifier response is missing key(s) {missing}. Raw response: {response.content!r}"
+        )
 
     return result
 

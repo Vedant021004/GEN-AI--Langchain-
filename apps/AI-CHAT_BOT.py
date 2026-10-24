@@ -1,5 +1,10 @@
+import logging
+
 import streamlit as st
 from langchain_ollama import ChatOllama
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="Vedant's Bot",
@@ -52,7 +57,15 @@ if prompt:
 
         with st.spinner("Thinking..."):
 
-            response = st.session_state.llm.invoke(prompt)
+            try:
+                response = st.session_state.llm.invoke(prompt)
+            except Exception as e:
+                logger.exception("Ollama invocation failed for prompt: %s", prompt)
+                st.error(
+                    f"Could not reach the model: {e}\n\n"
+                    "Check that Ollama is running and that the llama3.2 model is pulled."
+                )
+                st.stop()
 
             st.markdown(response.content)
 

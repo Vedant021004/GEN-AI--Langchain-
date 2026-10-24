@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import streamlit as st
+import logging
 
 from langchain_groq import ChatGroq
 from langchain_community.tools import GoogleSerperRun
@@ -7,9 +8,17 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 import os
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+load_dotenv()
 
-
+# Fail loudly and early: without these keys the agent only fails deep inside
+# an invoke() call, with an error that does not name the missing key.
+missing_keys = [key for key in ("GROQ_API_KEY", "SERPER_API_KEY") if not os.getenv(key)]
+if missing_keys:
+    st.error(f"Missing environment variable(s): {', '.join(missing_keys)}. Set them in your .env file.")
+    st.stop()
 
 if "memory" not in st.session_state:
     st.session_state.memory = MemorySaver()
@@ -112,4 +121,5 @@ if question:
         )
 
     except Exception as e:
-        st.error(e)
+        logger.exception("Agent invocation failed for question: %s", question)
+        st.error(f"The assistant failed to answer: {e}")
