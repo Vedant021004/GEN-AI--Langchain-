@@ -5,7 +5,9 @@ from langchain_groq import ChatGroq
 from langchain_community.tools import GoogleSerperRun
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
+import logging
 import os
+import uuid
 
 
 
@@ -16,6 +18,9 @@ if "memory" not in st.session_state:
 
 if "history" not in st.session_state:
     st.session_state.history = []
+
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
 
 # ---------------- LLM ---------------- #
 
@@ -93,7 +98,7 @@ if question:
             },
             config={
                 "configurable": {
-                    "thread_id": "1"
+                    "thread_id": st.session_state.thread_id
                 }
             }
         )
@@ -111,5 +116,6 @@ if question:
             }
         )
 
-    except Exception as e:
-        st.error(e)
+    except Exception:
+        logging.exception("Agent invocation failed")
+        st.error("Something went wrong while answering. Please try again.")
