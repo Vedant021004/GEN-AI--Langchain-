@@ -20,7 +20,7 @@
 ## 🖼️ Project at a glance
 
 ```mermaid
-flowchart LR
+flowchart LR..
     U(["👤 You"]) --> UI["Streamlit chat UI"]
     UI --> SS["Session State<br/>Conversation history"]
     SS --> LC["LangChain"]
