@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 <div align="center">
 
-# 🤖 Vedant's AI Chatbot
+# 🤖 Vedant's AI Chatbot..
 
 ### Your private, local AI assistant — powered by Streamlit, LangChain, Ollama, and Llama 3.2
 
@@ -21,7 +20,7 @@
 ## 🖼️ Project at a glance
 
 ```mermaid
-flowchart LR
+flowchart LR..
     U(["👤 You"]) --> UI["Streamlit chat UI"]
     UI --> SS["Session State<br/>Conversation history"]
     SS --> LC["LangChain"]
@@ -637,4 +636,4 @@ Give this repository a ⭐ and feel free to contribute!
 GitHub: **[https://github.com/Vedant021004](https://github.com/Vedant021004)**
 
 LinkedIn: **[https://www.linkedin.com/in/vedant-kapil-8a786740a/](https://www.linkedin.com/in/vedant-kapil-8a786740a/)**
->>>>>>> 3884f355b653cdc659197ffb9531395c6de18b08
+
