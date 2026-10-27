@@ -31,3 +31,6 @@ while True:
     )
 
     print("AI:", res["messages"][-1].content)
+
+
+
