@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 """)
 
-# LLM
+# LLMll
 model = ChatOllama(
     model="llama3.2"
 )
