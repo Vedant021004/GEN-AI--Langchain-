@@ -1,6 +1,6 @@
 <div align="center">.....
 
-# 🤖 Vedant's AI Chatbot..
+# 🤖 Vedant's AI Chatbot.. that reaad pdf
 
 ### Your private, local AI assistant — powered by Streamlit, LangChain, Ollama, and Llama 3.2
 
