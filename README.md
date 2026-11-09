@@ -13,7 +13,7 @@
 
 **Chat with an AI model on your own machine. No cloud LLM API key is required for the local Ollama setup.**
 
-</div>
+</div>...
 
 ---
 
