@@ -1,6 +1,6 @@
 <div align="center">.....
 
-# 🤖 Vedant's AI Chatbot..
+# 🤖 Vedant's AI Chatbot.. that reaad pdf
 
 ### Your private, local AI assistant — powered by Streamlit, LangChain, Ollama, and Llama 3.2
 
@@ -13,7 +13,7 @@
 
 **Chat with an AI model on your own machine. No cloud LLM API key is required for the local Ollama setup.**
 
-</div>
+</div>...
 
 ---
 
